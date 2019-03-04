@@ -1,24 +1,20 @@
 <template>
-    <my-page title="打卡" :page="page">
-        <div class="empty" v-if="!list.length">
-            <div class="text">没有任务，请点击「+」添加任务</div>
+    <my-page :title="title" backable>
+        <div class="empty" v-if="!logs.length">
+            <div class="text">没有打卡记录</div>
         </div>
         <ul class="record-list">
             <li class="item" v-for="item, index in sortedLogs">
                 <div class="left">
-                    <div class="title" @click="view(item, index)">{{ item.title }}</div>
-                    <div class="times" @click="view(item, index)">次数：{{ item.times }}</div>
-                    <div class="times" @click="view(item, index)">最近打卡时间：{{ item.lastTime | time }}</div>
+                    <div class="times" @click="view(item, index)">{{ item.time | time }}</div>
                 </div>
                 <div class="right">
-                    <ui-raised-button class="sign" primary label="打卡" @click="sign(item, index)" />
+                    <!-- <ui-raised-button class="sign" primary label="打卡" @click="sign(item, index)" /> -->
                     <br>
-                    <a href="#" @click="remove(item, index)">删除</a>
+                    <!-- <a href="#" @click="remove(item, index)">删除</a> -->
                 </div>
             </li>
         </ul>
-        <ui-float-button class="float-button" icon="add" secondary @click="add" />
-        <!-- <ui-float-button class="float-button2" icon="delete" secondary @click="clear()" /> -->
     </my-page>
 </template>
 
@@ -28,43 +24,23 @@
     export default {
         data () {
             return {
-                list: [
-                    {
-                        title: '吃饭',
-                        times: 6,
-                        lastTime: '2018-12-30 16:02:67'
-                    },
-                    {
-                        title: '哈哈',
-                        times: 8,
-                        lastTime: '2019-01-12 17:02:67'
-                    }
-                ],
+                record: {},
+                logs: [],
+                title: '打卡记录',
                 page: {
                     menu: [
                         {
                             type: 'icon',
-                            icon: 'delete',
-                            click: this.clear,
-                            title: '清空记录'
-                        },
-                        {
-                            type: 'icon',
-                            icon: 'apps',
-                            href: 'https://app.yunser.com?utm_source=timerecord',
-                            target: '_blank',
-                            title: '应用'
+                            icon: 'help',
+                            to: '/help'
                         }
                     ]
                 }
             }
         },
-        mounted() {
-            this.list = this.$storage.get('list', [])
-        },
         computed: {
             sortedLogs() {
-                return this.list.sort((a, b) => {
+                return this.logs.sort((a, b) => {
                     // if (!a.updateTime && !b.updateTime) {
                     //     return 0
                     // }
@@ -72,9 +48,24 @@
                 })
             }
         },
+        mounted() {
+            this.taskId = this.$route.params.id
+            let list = this.$storage.get('list', [])
+            for (let item of list) {
+                if (item.id === this.taskId) {
+                    this.task = item
+                    this.title = this.task.title
+                    console.log(this.task)
+                    this.loadLogs()
+                    break
+                }
+            }
+        },
         methods: {
-            view(item, index) {
-                this.$router.push(`/records/${item.id}`)
+            loadLogs() {
+                let logs = this.$storage.get('logs', [])
+                this.logs = logs.filter(i => i.taskId === this.task.id)
+                console.log('this.logs', this.logs)
             },
             add() {
                 this.$router.push('/add')
@@ -83,14 +74,17 @@
                 this.list[index].times++
                 this.list[index].lastTime = new Date().getTime()
                 this.list[index].updateTime = new Date().getTime()
+                this.list = this.list.sort((a, b) => {
+                    // if (!a.updateTime && !b.updateTime) {
+                    //     return 0
+                    // }
+                    return b.updateTime - a.updateTime
+                })
                 this.$storage.set('list', this.list)
                 let logs = this.$storage.get('logs', [])
-                logs.unshift({
-                    id: '' + new Date().getTime(),
-                    taskId: this.list[index].id,
-                    time: new Date().getTime(),
-                    createTime: new Date().getTime(),
-                    updateTime: new Date().getTime()
+                logs.push({
+                    id: this.list[index].id,
+                    time: new Date().getTime()
                 })
                 this.$storage.set('logs', logs)
             },
@@ -104,15 +98,6 @@
                 let logs = this.$storage.get('logs', [])
                 logs = logs.filter(i => i.id !== item.id)
                 this.$storage.set('logs', logs)
-            },
-            clear() {
-                let ret = window.confirm('清空所有记录？')
-                if (!ret) {
-                    return
-                }
-                this.list = []
-                this.$storage.set('list', this.list)
-                this.$storage.set('logs', [])
             }
         },
         filters: {
@@ -149,11 +134,6 @@
 .float-button {
     position: fixed;
     right: 24px;
-    bottom: 24px;
-}
-.float-button2 {
-    position: fixed;
-    left: 24px;
     bottom: 24px;
 }
 .sign {

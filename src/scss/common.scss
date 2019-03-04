@@ -1,0 +1,15 @@
+.ui-page-body {
+    -webkit-overflow-scrolling : touch;
+}
+input,
+textarea {
+  -webkit-appearance: none;
+}
+
+
+.ui-link {
+  text-decoration: none;
+  color: #ff4081;
+  user-select: none;
+  -webkit-user-select: initial;
+}
