@@ -1,74 +1,62 @@
 <template>
-    <my-page title="记录列表" :page="page" backable>
-        <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
-        <!-- <div class="simple-login-box" v-if="!$store.state.user">
-            <div>
-                <ui-text-field v-model="email" label="邮箱/用户名" />
-                <br>
-                <ui-text-field v-model="email" label="邮箱/用户名" />
-                <br>
-                <ui-raised-button @click="login">登录</ui-raised-button>
-            </div>
-        </div> -->
-        <div class="common-container" v-if="$store.state.user">
-            <div class="btns">
-                <ui-raised-button class="btn" secondary label="前一天" @click="prev" />
-                <ui-raised-button class="btn" primary label="后一天" @click="next" />
-            </div>
-            <div>
-                <router-link :to="'/timeline?date=' + date">时间轴</router-link>
-            </div>
+    <my-page title="列表" :page="page" backable>
+        <div class="common-container">
+            <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
+            <div class="container" v-if="$store.state.user">
+                <!-- <div class="search-box">
+                    <input class="input" v-model="keyword" placeholder="输入名称/备注搜索" @keydown="keyDown($event)">
+                    <ui-icon-button icon="close" title="搜索" primary @click="clearKeyword" v-if="keyword" />
+                    <ui-icon-button icon="search" title="搜索" primary @click="search" />
+                </div> -->
 
-            <div class="section">
-                <h2 class="section—title">{{ date }} 的统计</h2>
-                <div>总时间：{{ totalTime }}</div>
-                <div>总积分：{{ totalScore }}</div>
+                <h2 class="pui-section—title">总记录（{{ objects.length }}）</h2>
+                <div class="empty" v-if="!objects.length">没有物品</div>
+                <ul class="record-list">
+                    <li class="item" v-for="item, index in objects" :key="index">
+                        <router-link class="link" :to="`/dates/${item.id}`">
+                            <div class="info">
+                                <div class="name">
+                                    <span v-if="item.like">★</span>
+                                    {{ item.date }}
+                                </div>
+                                <!-- <div class="note">{{ item.note }}</div> -->
+                                <div class="note">
+                                    {{ item.weather | weather }}
+                                    {{ item.face | face }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="number">★{{ item.score / 20 }}</div>
+                                <!-- <div class="price">¥{{ item.price }}</div> -->
+                            </div>
+                        </router-link>
+                        <!-- <div class="time">{{ item.startTime | time }}</div>
+                        <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
+                        <div @click="remove(item, index)">删除</div>
+                        <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
+                    </li>
+                </ul>
             </div>
-
-            <h2 class="section—title">{{ date }} 的记录（{{ records.length }}）</h2>
-            <!-- <div @click="viewTodayBefore">查看昨天的记录</div>
-            <div @click="viewToday">查看今天的记录</div>
-            <div @click="viewTodayAfter">查看明天的记录</div> -->
-            <div class="empty" v-if="!records.length">没有记录</div>
-            <ul class="record-list">
-                <li class="item" v-for="item, index in records" :key="index">
-                    <router-link :to="`/records/${item.id}`">
-                        <div class="content">{{ item.content }}（记录值{{ item.value }}，积分：{{ item.score }}）</div>
-                    </router-link>
-                    <div class="time">{{ item.startTime | time }}</div>
-                    <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
-                    <div @click="remove(item, index)">删除</div>
-                    <a href="#" @click.prevent="finish(item, index)" v-if="!item.duration">结束</a>
-
-                </li>
-            </ul>
         </div>
         <ui-float-button class="float-button" icon="add" secondary @click="add" />
+        
     </my-page>
 </template>
 
 <script>
-    /* eslint-disable */
     import oss from '@/util/oss'
-    import { setInterval, clearInterval } from 'timers';
+    import filterUtil from '@/util/filter'
+    console.log('filterUtil', filterUtil)
     const moment = window.moment
 
     export default {
         data () {
             return {
-                date: '',
-                records: [],
-                totalTime: '0',
-                totalScore: 0,
-                timerTime: '-',
+                keyword: '',
+                objects: [],
+                latestDate: null,
                 page: {
                     menu: [
-                        // {
-                        //     type: 'icon',
-                        //     icon: 'search',
-                        //     to: '/search',
-                        //     title: '搜索'
-                        // }
                     ]
                 }
             }
@@ -80,51 +68,49 @@
                 date = moment().format('YYYY-MM-DD')
             }
             this.date = date
+
             this.loadData()
         },
         methods: {
+            clearKeyword() {
+                this.keyword = ''
+                this.$router.push('/objects')
+            },
+            goToPosition() {
+                this.$router.push('/positions')
+            },
+            viewItem(item) {
+                if (item.id) {
+                    this.$router.push('/dates/' + item.id)
+                }
+            },
             loadData() {
                 let user = this.$store.state.user
                 if (!user) {
                     return
                 }
-                let { date } = this.$route.query
-
-                this.$http.get(`/users/${user.id}/records?page_size=9999&date=${date || ''}`).then(
+                let { keyword } = this.$route.query
+                // this.userId = this.$route.params.id
+                this.keyword = keyword
+                // let { date } = this.$route.query
+                this.$http.get(`/life/dates?keyword=${keyword ? encodeURIComponent(keyword) : ''}&page_size=9999`).then(
                     response => {
                         let data = response.data
                         console.log(data)
-                        this.records = data
-                        this.totalTime = 0
-                        this.totalScore = 0
-                        for (let item of this.records) {
-                            // if (item.content.includes('跨天')) {
-                            //     console.log('aaa', moment(item.endTime).startOf('day') > moment(this.startTime).startOf('day'))
-                            // }
-                            if (moment(item.startTime).startOf('day') < moment(item.endTime).startOf('day')) { // TODO
-                                // 昨天跨天到今天
-                                console.error('no normal')
-                                let second = (moment(item.endTime).toDate().getTime() - moment(item.endTime).startOf('day').toDate().getTime()) / 1000
-                                console.log(second)
-                                this.totalTime += second
-                            } else if (moment(item.endTime).startOf('day') > moment(item.startTime).startOf('day')) { // TODO
-                                // 今天跨天到明天
-                                console.error('no normal 2', item.duration)
-                                let second = (moment(item.startTime).startOf('day').add(1, 'days').toDate().getTime() - moment(item.startTime).toDate().getTime()) / 1000
-                                console.log(second)
-                                this.totalTime += second
-                            } else {
-                                this.totalTime += item.duration
-                            }
-                            this.totalScore += item.score
+                        this.objects = data
+                    },
+                    response => {
+                        console.log('cuol')
+                        if (response.code === 403) {
+                            this.$store.state.user = null
                         }
-                        if (this.totalTime < 60) {
-                            this.totalTime = this.totalTime + '秒'
-                        } else if (this.totalTime < 60 * 60) {
-                            this.totalTime = Math.ceil(this.totalTime / 60) + '分钟'
-                        } else {
-                            this.totalTime = (this.totalTime / 3600).toFixed(1) + '小时'
-                        }
+                        this.loading = false
+                    })
+                this.$http.get(`/life/date/latest`).then(
+                    response => {
+                        let data = response.data
+                        console.log('latest', data)
+                        this.latestDate = data
                     },
                     response => {
                         console.log('cuol')
@@ -138,7 +124,7 @@
                 this.$router.push(`/records/${item.id}`)
             },
             add() {
-                this.$router.push('/record/add')
+                this.$router.push('/date/add')
             },
             sign(item, index) {
                 this.list[index].times++
@@ -154,9 +140,6 @@
                     updateTime: new Date().getTime()
                 })
                 this.$storage.set('logs', logs)
-            },
-            to(url) {
-                this.$router.push(url)
             },
             remove(item, index) {
                 let ret = window.confirm(`确认删除 ${item.content}？`)
@@ -175,10 +158,10 @@
                     })
             },
             finish(item, index) {
-                // let ret = window.confirm(`确认完成 ${item.content}？`)
-                // if (!ret) {
-                //     return
-                // }
+                let ret = window.confirm(`确认完成 ${item.content}？`)
+                if (!ret) {
+                    return
+                }
                 let endTime = moment().format('YYYY-MM-DD HH:mm:ss')
                 let duration = (new Date().getTime() - moment(item.startTime).toDate().getTime()) / 1000
                 console.log(duration)
@@ -225,14 +208,15 @@
             login() {
                 location.href = oss.getOauthUrl()
             },
-            prev() {
-                console.log('prev')
-                let date = moment(this.date).subtract(1, 'days').format('YYYY-MM-DD')
-                this.$router.replace(`/records?date=${date}`)
-            },
-            next() {
-                let date = moment(this.date).add(1, 'days').format('YYYY-MM-DD')
-                this.$router.replace(`/records?date=${date}`)
+            search() {
+                if (!this.keyword) {
+                    this.$message({
+                        type: 'danger',
+                        text: '请输入关键词'
+                    })
+                    return
+                }
+                this.$router.push(`/objects?keyword=${encodeURIComponent(this.keyword)}`)
             },
         },
         filters: {
@@ -244,22 +228,33 @@
             },
             duration(value) {
                 return Math.ceil(value / 60) + '分钟'
-            }
+            },
+            face(value) {
+                let map = {
+                    0: '',
+                    1: '超烂',
+                    2: '不爽',
+                    3: '还行',
+                    4: '开心',
+                    5: '狂喜',
+                }
+                return map[value]
+            },
+            weather: filterUtil.weather
         }
     }
 </script>
 
 <style lang="scss" scoped>
-.btns {
+.latest-box {
     margin-bottom: 16px;
-    margin-right: 8px;
 }
 .simple-login-box {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, .12);
 }
-.conteiner {
+.container {
     max-width: 400px;
     margin: 0 auto;
 }
@@ -279,13 +274,19 @@
     }
 }
 .record-list {
+    margin-bottom: 16px;
     .item {
         // display: flex;
         // justify-content: space-between;
-        padding: 16px 0;
+        padding: 8px 0;
         border-bottom: 1px solid rgba(0, 0, 0, .12);
     }
-    .title {
+    .link {
+        display: flex;
+        justify-content: space-between;
+        color: inherit;
+    }
+    .name {
         font-size: 16px;
         font-weight: bold;
         cursor: pointer;
@@ -293,6 +294,16 @@
     .times {
         color: #666;
         cursor: pointer;
+    }
+    .note {
+        color: #999;
+    }
+    .number {
+        text-align: right;
+    }
+    .price {
+        color: #f00;
+        text-align: right;
     }
 }
 .float-button {
@@ -313,6 +324,27 @@
         color: #999;
         padding: 80px 0;
         text-align: center;
+    }
+}
+.search-box {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 24px;
+    // border: 1px solid #eee;
+    box-shadow: 0 1px 6px rgba(0,0,0,.117647), 0 1px 4px rgba(0,0,0,.117647);
+    background-color: #fff;
+    &:hover {
+        box-shadow: 0 3px 8px 0 rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .input {
+        flex-grow: 1;
+        display: block;
+        height: 48px;
+        padding: 0 16px;
+        line-height: 48px;
+        border: none;
+        outline: none;
     }
 }
 </style>

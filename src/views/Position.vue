@@ -1,5 +1,5 @@
 <template>
-    <my-page title="记录列表" :page="page" backable>
+    <my-page :title="title" :page="page" backable>
         <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
         <!-- <div class="simple-login-box" v-if="!$store.state.user">
             <div>
@@ -11,66 +11,46 @@
             </div>
         </div> -->
         <div class="common-container" v-if="$store.state.user">
-            <div class="btns">
-                <ui-raised-button class="btn" secondary label="前一天" @click="prev" />
-                <ui-raised-button class="btn" primary label="后一天" @click="next" />
-            </div>
-            <div>
-                <router-link :to="'/timeline?date=' + date">时间轴</router-link>
-            </div>
-
-            <div class="section">
-                <h2 class="section—title">{{ date }} 的统计</h2>
-                <div>总时间：{{ totalTime }}</div>
-                <div>总积分：{{ totalScore }}</div>
-            </div>
-
-            <h2 class="section—title">{{ date }} 的记录（{{ records.length }}）</h2>
-            <!-- <div @click="viewTodayBefore">查看昨天的记录</div>
-            <div @click="viewToday">查看今天的记录</div>
-            <div @click="viewTodayAfter">查看明天的记录</div> -->
-            <div class="empty" v-if="!records.length">没有记录</div>
+            <!-- <h2 class="section—title" v-if="positions.length">数量（{{ positions.length }}）</h2> -->
+            <div class="pui-empty" v-if="!positions.length">没有添加位置</div>
             <ul class="record-list">
-                <li class="item" v-for="item, index in records" :key="index">
-                    <router-link :to="`/records/${item.id}`">
-                        <div class="content">{{ item.content }}（记录值{{ item.value }}，积分：{{ item.score }}）</div>
+                <li class="item" v-for="item, index in positions" :key="index">
+                    <router-link :to="`/positions/${item.id}`">
+                        <div class="content">{{ item.name }}</div>
                     </router-link>
-                    <div class="time">{{ item.startTime | time }}</div>
+                    <!-- <div class="time">{{ item.startTime | time }}</div>
                     <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
                     <div @click="remove(item, index)">删除</div>
-                    <a href="#" @click.prevent="finish(item, index)" v-if="!item.duration">结束</a>
+                    <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
 
                 </li>
             </ul>
         </div>
         <ui-float-button class="float-button" icon="add" secondary @click="add" />
+        
     </my-page>
 </template>
 
 <script>
-    /* eslint-disable */
     import oss from '@/util/oss'
-    import { setInterval, clearInterval } from 'timers';
     const moment = window.moment
 
     export default {
         data () {
             return {
-                date: '',
-                records: [],
-                totalTime: '0',
-                totalScore: 0,
-                timerTime: '-',
+                positions: [],
                 page: {
                     menu: [
-                        // {
-                        //     type: 'icon',
-                        //     icon: 'search',
-                        //     to: '/search',
-                        //     title: '搜索'
-                        // }
                     ]
                 }
+            }
+        },
+        computed: {
+            title() {
+                if (!this.positions.length) {
+                    return '位置'
+                }
+                return `位置（${this.positions.length}）`
             }
         },
         mounted() {
@@ -88,43 +68,24 @@
                 if (!user) {
                     return
                 }
-                let { date } = this.$route.query
-
-                this.$http.get(`/users/${user.id}/records?page_size=9999&date=${date || ''}`).then(
+                // let { date } = this.$route.query
+                this.$http.get(`/life/positions?page_size=9999`).then(
                     response => {
                         let data = response.data
                         console.log(data)
-                        this.records = data
-                        this.totalTime = 0
-                        this.totalScore = 0
-                        for (let item of this.records) {
-                            // if (item.content.includes('跨天')) {
-                            //     console.log('aaa', moment(item.endTime).startOf('day') > moment(this.startTime).startOf('day'))
-                            // }
-                            if (moment(item.startTime).startOf('day') < moment(item.endTime).startOf('day')) { // TODO
-                                // 昨天跨天到今天
-                                console.error('no normal')
-                                let second = (moment(item.endTime).toDate().getTime() - moment(item.endTime).startOf('day').toDate().getTime()) / 1000
-                                console.log(second)
-                                this.totalTime += second
-                            } else if (moment(item.endTime).startOf('day') > moment(item.startTime).startOf('day')) { // TODO
-                                // 今天跨天到明天
-                                console.error('no normal 2', item.duration)
-                                let second = (moment(item.startTime).startOf('day').add(1, 'days').toDate().getTime() - moment(item.startTime).toDate().getTime()) / 1000
-                                console.log(second)
-                                this.totalTime += second
-                            } else {
-                                this.totalTime += item.duration
-                            }
-                            this.totalScore += item.score
+                        this.positions = data
+                        if (this.records.length) {
+                            this.latestRecord = this.records[this.records.length - 1]
                         }
-                        if (this.totalTime < 60) {
-                            this.totalTime = this.totalTime + '秒'
-                        } else if (this.totalTime < 60 * 60) {
-                            this.totalTime = Math.ceil(this.totalTime / 60) + '分钟'
-                        } else {
-                            this.totalTime = (this.totalTime / 3600).toFixed(1) + '小时'
-                        }
+                        // console.log('latest', this.latestRecord)
+                        // this.totalTime = 0
+                        // if (this.totalTime < 60) {
+                        //     this.totalTime = this.totalTime + '秒'
+                        // } else if (this.totalTime < 60 * 60) {
+                        //     this.totalTime = Math.ceil(this.totalTime / 60) + '分钟'
+                        // } else {
+                        //     this.totalTime = (this.totalTime / 3600).toFixed(1) + '小时'
+                        // }
                     },
                     response => {
                         console.log('cuol')
@@ -138,7 +99,7 @@
                 this.$router.push(`/records/${item.id}`)
             },
             add() {
-                this.$router.push('/record/add')
+                this.$router.push('/position/add')
             },
             sign(item, index) {
                 this.list[index].times++
@@ -154,9 +115,6 @@
                     updateTime: new Date().getTime()
                 })
                 this.$storage.set('logs', logs)
-            },
-            to(url) {
-                this.$router.push(url)
             },
             remove(item, index) {
                 let ret = window.confirm(`确认删除 ${item.content}？`)
@@ -175,10 +133,10 @@
                     })
             },
             finish(item, index) {
-                // let ret = window.confirm(`确认完成 ${item.content}？`)
-                // if (!ret) {
-                //     return
-                // }
+                let ret = window.confirm(`确认完成 ${item.content}？`)
+                if (!ret) {
+                    return
+                }
                 let endTime = moment().format('YYYY-MM-DD HH:mm:ss')
                 let duration = (new Date().getTime() - moment(item.startTime).toDate().getTime()) / 1000
                 console.log(duration)
@@ -224,16 +182,7 @@
             },
             login() {
                 location.href = oss.getOauthUrl()
-            },
-            prev() {
-                console.log('prev')
-                let date = moment(this.date).subtract(1, 'days').format('YYYY-MM-DD')
-                this.$router.replace(`/records?date=${date}`)
-            },
-            next() {
-                let date = moment(this.date).add(1, 'days').format('YYYY-MM-DD')
-                this.$router.replace(`/records?date=${date}`)
-            },
+            }
         },
         filters: {
             time(value) {
@@ -250,10 +199,6 @@
 </script>
 
 <style lang="scss" scoped>
-.btns {
-    margin-bottom: 16px;
-    margin-right: 8px;
-}
 .simple-login-box {
     width: 100%;
     height: 100%;

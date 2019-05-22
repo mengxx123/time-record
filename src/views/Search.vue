@@ -1,6 +1,6 @@
 <template>
     <my-page title="搜索" backable>
-        <div class="conteiner" v-if="$store.state.user">
+        <div class="common-container" v-if="$store.state.user">
             <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
             <ui-text-field v-model="keyword" label="关键词" />
             <br>
@@ -9,14 +9,16 @@
             <div class="empty" v-if="!records.length">没有记录</div>
             <ul class="record-list">
                 <li class="item" v-for="item, index in records" :key="index">
-                    <router-link :to="`/records2/${item.id}`">
-                        <div class="content">{{ item.content }}</div>
+                    <router-link :to="`/records/${item.id}`">
+                        <div class="content">{{ item.content }}（{{ item.value }}）</div>
                     </router-link>
-                    <div class="time">{{ item.startTime | time }}</div>
+                    <div class="time">
+                        {{ item.startTime | time }}
+                        （星期{{ item.week }}，{{ item.dayAgo }} 天前）
+                    </div>
                     <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
                     <div @click="remove(item, index)">删除</div>
                     <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div>
-
                 </li>
             </ul>
         </div>
@@ -44,6 +46,32 @@
             }
         },
         mounted() {
+            let { keyword } = this.$route.query
+            if (!keyword) {
+                return
+            }
+            this.keyword = keyword
+            this.$http.get(`/records?keyword=${encodeURIComponent(this.keyword)}`).then(
+                response => {
+                    let data = response.data
+                    console.log(data)
+                    this.records = data.map(item => {
+                        let weeks = '日一二三四五六'.split('')
+                        const DAY = 24 * 3600 * 1000
+                        return {
+                            ...item,
+                            week: weeks[moment(item.startTime).day()],
+                            dayAgo: Math.floor((moment().startOf('day').toDate().getTime() - moment(item.startTime).startOf('day').toDate().getTime()) / DAY)
+                        }
+                    })
+                },
+                response => {
+                    console.log('cuol')
+                    if (response.code === 403) {
+                        this.$store.state.user = null
+                    }
+                    this.loading = false
+                })
         },
         methods: {
             search() {
@@ -54,19 +82,7 @@
                     })
                     return
                 }
-                this.$http.get(`/records?keyword=${encodeURIComponent(this.keyword)}`).then(
-                    response => {
-                        let data = response.data
-                        console.log(data)
-                        this.records = data
-                    },
-                    response => {
-                        console.log('cuol')
-                        if (response.code === 403) {
-                            this.$store.state.user = null
-                        }
-                        this.loading = false
-                    })
+                this.$router.push('/search?keyword=' + encodeURIComponent(this.keyword))
             },
             view(item, index) {
                 this.$router.push(`/records/${item.id}`)

@@ -1,36 +1,43 @@
 <template>
-    <my-page title="记录详情" :page="page" backable>
+    <my-page title="位置详情" :page="page" backable>
         <div class="common-container">
             <ui-article>
-                <h2>{{ record.content }}</h2>
-                <p>备注：{{ record.note || '无' }}</p>
-                <p>记录值：{{ record.value || 0 }}</p>
-                <p>积分：{{ record.score || 0 }}</p>
-                <p>开始时间：{{ record.startTime }}</p>
-                <p v-if="record.duration">持续时间：{{ record.duration }} 秒</p>
-                <p v-if="record.duration">结束时间：{{ record.endTime }}</p>
-
-                <h2>统计</h2>
-                <p>今天：{{ stat.today }}</p>
+                <h2>名称：{{ myObject.name }}</h2>
+                <p>备注：{{ myObject.note || '无' }}</p>
+                <!-- <p>记录时间：{{ myObject.createTime }}</p> -->
+                <!-- <p v-if="myObject.duration">持续时间：{{ myObject.duration }} 秒</p> -->
+                <!-- <p v-if="myObject.duration">结束时间：{{ myObject.endTime }}</p> -->
             </ui-article>
+            <h2 class="pui-section—title">物品（{{ objects.length }}）</h2>
+            <div class="empty" v-if="!objects.length">没有物品</div>
+            <ul class="record-list">
+                <li class="item" v-for="item, index in objects" :key="index">
+                    <router-link :to="`/objects/${item.id}`">
+                        <div class="content">{{ item.name }}</div>
+                    </router-link>
+                    <!-- <div class="time">{{ item.startTime | time }}</div>
+                    <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
+                    <div @click="remove(item, index)">删除</div>
+                    <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
+
+                </li>
+            </ul>
         </div>
+        <ui-float-button class="float-button" icon="add" secondary @click="add" />
     </my-page>
 </template>
 
 <script>
-    /* eslint-disable */
     const moment = window.moment
 
     export default {
         data () {
             return {
-                record: {
+                myObject: {
                     content: '',
                     note: '',
                 },
-                stat: {
-                    today: 0
-                },
+                objects: [],
                 minute: null,
                 endTime: '',
                 page: {
@@ -47,84 +54,47 @@
                             click: this.remove,
                             title: '删除'
                         },
-                        {
-                            type: 'icon',
-                            icon: 'first_page',
-                            click: this.prev,
-                            title: '上一个记录'
-                        },
-                                                {
-                            type: 'icon',
-                            icon: 'last_page',
-                            click: this.next,
-                            title: '下一个记录'
-                        },
                     ]
                 }
             }
         },
         mounted() {
             let id = this.$route.params.id
-            this.$http.get(`/records/${id}`).then(
+            this.$http.get(`/life/positions/${id}`).then(
                 response => {
                     let data = response.data
                     console.log(data)
-                    this.record = data
-                    this.record.startTime = moment(this.record.startTime).format('YYYY-MM-DD HH:mm:ss')
-                    this.record.endTime = moment(this.record.endTime).format('YYYY-MM-DD HH:mm:ss')
-                    this.endTime = this.record.endTime
+                    this.myObject = data
+                    this.myObject.buyTime = moment(this.myObject.buyTime).format('YYYY-MM-DD HH:mm:ss')
+                    // this.myObject.endTime = moment(this.myObject.endTime).format('YYYY-MM-DD HH:mm:ss')
+                    // this.endTime = this.myObject.endTime
 
                     // this.$router.go(-1)
-                    this.$http.get(`/users/1/records?page_size=9999&date=&content=${this.record.content}`).then(
-                        response => {
-                            let data = response.data
-                            console.log(data)
-                            this.stat.today = data.length
-                            // this.records = data
-                            // if (this.records.length) {
-                            //     this.latestRecord = this.records[this.records.length - 1]
-                            // }
-                        },
-                        response => {
-                            console.log(response)
-                            this.loading = false
-                        })
                 },
                 response => {
                     console.log(response)
                     this.loading = false
                 })
-            document.addEventListener('keydown', this._onKeyDown = e => {
-                console.log(e.keyCode)
-                if (e.keyCode === 69) {
-                    this.edit()
-                }
-                switch (e.keyCode) {
-                    case 69: // e
-                        this.edit()
-                        return
-                    case 8:
-                        this.remove()
-                        return
-                    case 37:
-                        this.prev()
-                        return
-                    case 39:
-                        this.next()
-                        return
-                }
-                // if (e.keyCode === 69) {
-                //     this.edit()
-                // }
-            })
-        },
-        destroyed() {
-            clearInterval(this.timer)
-            document.removeEventListener('keydown', this._onKeyDown)
+            this.$http.get(`/life/objects?positionId=${id}&page_size=9999`).then(
+                    response => {
+                        let data = response.data
+                        console.log(data)
+                        this.objects = data
+                    },
+                    response => {
+                        console.log('cuol')
+                        if (response.code === 403) {
+                            this.$store.state.user = null
+                        }
+                        this.loading = false
+                    })
         },
         methods: {
+            add() {
+                this.$router.push(`/object/add?positionId=${this.myObject.id}`)
+            },
             edit() {
-                this.$router.push(`/records/${this.$route.params.id}/edit`)
+                this.$router.push(`/positions/${this.$route.params.id}/edit`)
             },
             finish() {
                 if (!this.record.content) {
@@ -176,11 +146,11 @@
                 // this.record.endTime = moment(this.record.startTime).add(this.record.duration, 's').format('YYYY-MM-DD HH:mm:ss')
             },
             remove() {
-                let ret = window.confirm(`确认删除 ${this.record.content}？`)
+                let ret = window.confirm(`确认删除 ${this.myObject.name}？`)
                 if (!ret) {
                     return
                 }
-                this.$http.delete(`/records/${this.record.id}`).then(
+                this.$http.delete(`/life/positions/${this.myObject.id}`).then(
                     response => {
                         // let data = response.data
                         this.$router.go(-1)
@@ -239,6 +209,11 @@
 </script>
 
 <style lang="scss" scoped>
+.container {
+    width: 400px;
+    max-width: 100%;
+    margin: 0 auto;
+}
 .record-list {
     .item {
         display: flex;

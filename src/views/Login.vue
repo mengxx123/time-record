@@ -23,7 +23,7 @@
             <div class="section">
                 <h2 class="section—title">最近的记录</h2>
                 <li class="item" v-if="latestRecord">
-                    <router-link :to="`/records2/${latestRecord.id}`">
+                    <router-link :to="`/records/${latestRecord.id}`">
                         <div class="content">{{ latestRecord.content }}</div>
                     </router-link>
                     <div class="time">{{ latestRecord.startTime | time }}</div>
@@ -46,7 +46,7 @@
             <div class="empty" v-if="!records.length">没有记录</div>
             <ul class="record-list">
                 <li class="item" v-for="item, index in records" :key="index">
-                    <router-link :to="`/records2/${item.id}`">
+                    <router-link :to="`/records/${item.id}`">
                         <div class="content">{{ item.content }}</div>
                     </router-link>
                     <div class="time">{{ item.startTime | time }}</div>

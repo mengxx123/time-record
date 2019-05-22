@@ -5,17 +5,32 @@
                 <img class="logo" src="/static/img/sign.svg">
             </div>
             <ui-list @itemClick="toggle()">
-                <ui-list-item title="打卡" to="/">
-                    <ui-icon slot="left" value="grade"/>
-                </ui-list-item>
                 <ui-list-item title="时间记录" to="/record">
-                    <ui-icon slot="left" value="grade"/>
+                    <ui-icon slot="left" value="home"/>
                 </ui-list-item>
                 <ui-list-item title="我的提醒" to="/notice">
                     <ui-icon slot="left" value="grade"/>
                 </ui-list-item>
-                <ui-list-item title="关于" href="https://project.yunser.com/products/24a9f1301bd211e9a2192102b42ff108" target="_blank">
+                <ui-list-item title="我的物品" to="/objects">
                     <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="书籍/视频" to="/acg">
+                    <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="我的饮食" to="/eat">
+                    <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="我的旅游" to="/location">
+                    <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="今天" to="/today">
+                    <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="打卡" to="/home">
+                    <ui-icon slot="left" value="grade"/>
+                </ui-list-item>
+                <ui-list-item title="关于" href="https://project.yunser.com/products/24a9f1301bd211e9a2192102b42ff108" target="_blank">
+                    <ui-icon slot="left" value="info"/>
                 </ui-list-item>
             </ui-list>
         </div>

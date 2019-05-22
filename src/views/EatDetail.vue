@@ -1,17 +1,11 @@
 <template>
-    <my-page title="记录详情" :page="page" backable>
-        <div class="common-container">
+    <my-page title="饮食详情" :page="page" backable>
+        <div class="common-container" v-if="myObject">
             <ui-article>
-                <h2>{{ record.content }}</h2>
-                <p>备注：{{ record.note || '无' }}</p>
-                <p>记录值：{{ record.value || 0 }}</p>
-                <p>积分：{{ record.score || 0 }}</p>
-                <p>开始时间：{{ record.startTime }}</p>
-                <p v-if="record.duration">持续时间：{{ record.duration }} 秒</p>
-                <p v-if="record.duration">结束时间：{{ record.endTime }}</p>
-
-                <h2>统计</h2>
-                <p>今天：{{ stat.today }}</p>
+                <h2>内容：{{ myObject.content }}</h2>
+                <p>备注：{{ myObject.note || '无' }}</p>
+                <!-- <p>数量：{{ myObject.number }}</p> -->
+                <!-- <p>价格：¥{{ myObject.price }}</p> -->
             </ui-article>
         </div>
     </my-page>
@@ -24,15 +18,14 @@
     export default {
         data () {
             return {
-                record: {
+                myObject: {
                     content: '',
                     note: '',
                 },
-                stat: {
-                    today: 0
-                },
+                qrcodeUrl: '',
                 minute: null,
                 endTime: '',
+                records: [],
                 page: {
                     menu: [
                         {
@@ -47,84 +40,81 @@
                             click: this.remove,
                             title: '删除'
                         },
-                        {
-                            type: 'icon',
-                            icon: 'first_page',
-                            click: this.prev,
-                            title: '上一个记录'
-                        },
-                                                {
-                            type: 'icon',
-                            icon: 'last_page',
-                            click: this.next,
-                            title: '下一个记录'
-                        },
                     ]
                 }
             }
         },
         mounted() {
-            let id = this.$route.params.id
-            this.$http.get(`/records/${id}`).then(
-                response => {
-                    let data = response.data
-                    console.log(data)
-                    this.record = data
-                    this.record.startTime = moment(this.record.startTime).format('YYYY-MM-DD HH:mm:ss')
-                    this.record.endTime = moment(this.record.endTime).format('YYYY-MM-DD HH:mm:ss')
-                    this.endTime = this.record.endTime
-
-                    // this.$router.go(-1)
-                    this.$http.get(`/users/1/records?page_size=9999&date=&content=${this.record.content}`).then(
-                        response => {
-                            let data = response.data
-                            console.log(data)
-                            this.stat.today = data.length
-                            // this.records = data
-                            // if (this.records.length) {
-                            //     this.latestRecord = this.records[this.records.length - 1]
-                            // }
-                        },
-                        response => {
-                            console.log(response)
-                            this.loading = false
-                        })
-                },
-                response => {
-                    console.log(response)
-                    this.loading = false
-                })
-            document.addEventListener('keydown', this._onKeyDown = e => {
-                console.log(e.keyCode)
-                if (e.keyCode === 69) {
-                    this.edit()
-                }
-                switch (e.keyCode) {
-                    case 69: // e
-                        this.edit()
-                        return
-                    case 8:
-                        this.remove()
-                        return
-                    case 37:
-                        this.prev()
-                        return
-                    case 39:
-                        this.next()
-                        return
-                }
-                // if (e.keyCode === 69) {
-                //     this.edit()
-                // }
-            })
-        },
-        destroyed() {
-            clearInterval(this.timer)
-            document.removeEventListener('keydown', this._onKeyDown)
+            this.ObjectId = this.$route.params.id
+            this.loadData()
         },
         methods: {
+            loadData() {
+                this.$http.get(`/eat/logs/${this.ObjectId}`).then(
+                    response => {
+                        let data = response.data
+                        console.log(data)
+                        this.myObject = data
+                        // this.myObject.buyTime = moment(this.myObject.buyTime).format('YYYY-MM-DD HH:mm:ss')
+                        // this.myObject.endTime = moment(this.myObject.endTime).format('YYYY-MM-DD HH:mm:ss')
+                        // this.endTime = this.myObject.endTime
+
+                        // this.$router.go(-1)
+                    },
+                    response => {
+                        console.log(response)
+                        this.loading = false
+                    })
+            },
+            subtractOne() {
+                this.$http.post(`/records`, {
+                    objectId:this.myObject.id,
+                    content: `使用了一个${this.myObject.name}，剩余：${this.myObject.number - 1}`
+                    // number: this.myObject.number - 1
+                }).then(
+                    response => {
+                        let data = response.data
+                        console.log(data)
+                        this.$http.put(`/life/objects/${this.ObjectId}`, {
+                            number: this.myObject.number - 1
+                        }).then(
+                            response => {
+                                let data = response.data
+                                console.log(data)
+                                this.loadData()
+                            },
+                            response => {
+                                console.log(response)
+                                this.loading = false
+                            })
+                        // this.loadData()
+                    },
+                    response => {
+                        console.log(response)
+                        this.loading = false
+                    })
+            },
+            toggleLike() {
+                this.$http.put(`/life/objects/${this.ObjectId}`, {
+                    like: !this.myObject.like,
+                }).then(
+                    response => {
+                        let data = response.data
+                        console.log(data)
+                        this.loadData()
+                    },
+                    response => {
+                        console.log(response)
+                        this.loading = false
+                    })
+            },
+            createQrcode() {
+                let url = `https://record.yunser.com/objects/${this.ObjectId}/qrcode`
+                url = `https://nodeapi.yunser.com/qrcode?content=${encodeURIComponent(url)}`
+                this.qrcodeUrl = url
+            },
             edit() {
-                this.$router.push(`/records/${this.$route.params.id}/edit`)
+                this.$router.push(`/eats/${this.$route.params.id}/edit`)
             },
             finish() {
                 if (!this.record.content) {
@@ -176,11 +166,11 @@
                 // this.record.endTime = moment(this.record.startTime).add(this.record.duration, 's').format('YYYY-MM-DD HH:mm:ss')
             },
             remove() {
-                let ret = window.confirm(`确认删除 ${this.record.content}？`)
+                let ret = window.confirm(`确认删除 ${this.myObject.content}？`)
                 if (!ret) {
                     return
                 }
-                this.$http.delete(`/records/${this.record.id}`).then(
+                this.$http.delete(`/eat/logs/${this.myObject.id}`).then(
                     response => {
                         // let data = response.data
                         this.$router.go(-1)
@@ -233,32 +223,78 @@
                         console.log(response)
                         this.loading = false
                     })
+            },
+            addRecord() {
+                this.$router.push(`/record/add?objectId=${this.ObjectId}`)
+            }
+        },
+        filters: {
+            time(value) {
+                if (!value) {
+                    return '--'
+                }
+                return moment(new Date(value)).format('YYYY-MM-DD HH:mm')
+            },
+            duration(value) {
+                return Math.ceil(value / 60) + '分钟'
             }
         }
     }
 </script>
 
 <style lang="scss" scoped>
+.container {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.float-button {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+}
+.btns {
+    margin-bottom: 16px;
+}
+.qrcode {
+    border: 1px solid #eee;
+}
+
+.section—title {
+    font-size: 24px;
+    margin: 16px 0;
+}
+.quick-list {
+    display: flex;
+    flex-wrap: wrap;
+    .item {
+        padding: 4px 8px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #000;
+        cursor: pointer;
+    }
+}
 .record-list {
     .item {
-        display: flex;
-        justify-content: space-between;
-        max-width: 400px;
-        margin: 0 auto;
+        // display: flex;
+        // justify-content: space-between;
         padding: 16px 0;
         border-bottom: 1px solid rgba(0, 0, 0, .12);
     }
     .title {
         font-size: 16px;
         font-weight: bold;
+        cursor: pointer;
     }
     .times {
         color: #666;
+        cursor: pointer;
     }
 }
-.float-button {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
+.btns {
+    .btn {
+        margin-right: 8px;
+    }
 }
 </style>

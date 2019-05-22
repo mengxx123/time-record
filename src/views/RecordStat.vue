@@ -1,18 +1,17 @@
 <template>
     <my-page title="统计" :page="page" backable>
-        <div class="conteiner">
+        <div class="common-container">
             <h2 class="section—title">今天的记录（{{ records.length }}）</h2>
             <div class="empty" v-if="!records.length">没有记录</div>
             <ul class="record-list">
                 <li class="item" v-for="item, index in records" :key="index">
                     <div class="content">{{ item.content }}</div>
-                    <!-- <router-link :to="`/records2/${item.id}`">
+                    <!-- <router-link :to="`/records/${item.id}`">
                     </router-link> -->
                     <div class="time">{{ item.startTime | time }}</div>
                     <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
                     <!-- <div @click="remove(item, index)">删除</div> -->
                     <!-- <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
-
                 </li>
             </ul>
         </div>

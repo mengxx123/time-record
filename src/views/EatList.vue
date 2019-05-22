@@ -1,32 +1,38 @@
 <template>
-    <my-page title="时间记录" :page="page">
-        <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
-        <!-- <div class="simple-login-box" v-if="!$store.state.user">
-            <div>
-                <ui-text-field v-model="email" label="邮箱/用户名" />
-                <br>
-                <ui-text-field v-model="email" label="邮箱/用户名" />
-                <br>
-                <ui-raised-button @click="login">登录</ui-raised-button>
-            </div>
-        </div> -->
-        <div class="common-container" v-if="$store.state.user">
-            <h2 class="section—title">今天的记录（{{ notices.length }}）</h2>
-            <div class="empty" v-if="!notices.length">没有记录</div>
-            <ul class="record-list">
-                <li class="item" v-for="item, index in notices" :key="index">
-                    <router-link :to="`/records/${item.id}`">
-                        <div class="content">{{ item.content }}</div>
-                    </router-link>
-                    <!-- <div class="time">{{ item.startTime | time }}</div>
-                    <div class="time" v-if="item.duration">{{ item.duration | duration }}</div>
-                    <div @click="remove(item, index)">删除</div>
-                    <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
+    <my-page title="所有饮食" :page="page" backable>
+        <div class="common-container">
+            <a href="javascript:;" v-if="!$store.state.user" @click="login">点击登陆</a>
+            <div class="container" v-if="$store.state.user">
+                <!-- <div class="search-box">
+                    <input class="input" v-model="keyword" placeholder="输入名称/备注搜索" @keydown="keyDown($event)">
+                    <ui-icon-button icon="add" title="添加" primary @click="quickAdd" />
+                    <ui-icon-button icon="close" title="搜索" primary @click="clearKeyword" v-if="keyword" />
+                    <ui-icon-button icon="search" title="搜索" primary @click="search" />
+                </div> -->
+                <h2 class="section—title">总记录（{{ objects.length }}）</h2>
+                <div class="empty" v-if="!objects.length">没有物品</div>
+                <ul class="record-list">
+                    <li class="item" v-for="item, index in objects" :key="index">
+                        <router-link class="link" :to="`/objects/${item.id}`">
+                            <div class="info">
+                                <div class="name">{{ item.content }}</div>
+                                <div class="note">{{ item.dayAgo }} 天前</div>
+                            </div>
+                            <!-- <div>
+                                <div class="number">×{{ item.number }}</div>
+                                <div class="price">¥{{ item.price }}</div>
+                            </div> -->
+                        </router-link>
+                        <!-- <div class="time">{{ item.startTime | time }}</div> -->
+                        <!-- <div class="time" v-if="item.duration">{{ item.duration | duration }}</div> -->
+                        <div @click="remove(item, index)">删除</div>
+                        <!-- <div @click="finish(item, index)" v-if="!item.duration">刚刚完成</div> -->
 
-                </li>
-            </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <ui-float-button class="float-button" icon="add" secondary @click="add" />
+        <!-- <ui-float-button class="float-button" icon="add" secondary @click="add" /> -->
         
     </my-page>
 </template>
@@ -38,9 +44,23 @@
     export default {
         data () {
             return {
-                notices: [],
+                keyword: '',
+                objects: [],
                 page: {
                     menu: [
+                        {
+                            type: 'icon',
+                            icon: 'list',
+                            click: this.goToPosition,
+                            title: '记录列表'
+                        },
+                        {
+                            type: 'icon',
+                            icon: 'info',
+                            href: 'https://project.yunser.com/products/60b7a8a05dba11e99da1c5fddb71d576',
+                            target: '_blank',
+                            title: '记录列表'
+                        },
                     ]
                 }
             }
@@ -55,29 +75,38 @@
             this.loadData()
         },
         methods: {
+            clearKeyword() {
+                this.keyword = ''
+                this.$router.push('/objects')
+            },
+            goToPosition() {
+                this.$router.push('/positions')
+            },
             loadData() {
                 let user = this.$store.state.user
                 if (!user) {
                     return
                 }
+                let { keyword } = this.$route.query
+                // this.userId = this.$route.params.id
+                this.keyword = keyword
                 // let { date } = this.$route.query
-                this.$http.get(`/notices?page_size=9999`).then(
+                this.$http.get(`/eat/logs?keyword=${keyword ? encodeURIComponent(keyword) : ''}&page_size=9999`).then(
                     response => {
                         let data = response.data
                         console.log(data)
-                        this.notices = data
+                        this.objects = data.map(item => {
+                            let weeks = '日一二三四五六'.split('')
+                            const DAY = 24 * 3600 * 1000
+                            return {
+                                ...item,
+                                week: weeks[moment(item.recordTime).day()],
+                                dayAgo: Math.floor((moment().startOf('day').toDate().getTime() - moment(item.recordTime).startOf('day').toDate().getTime()) / DAY)
+                            }
+                        })
                         if (this.records.length) {
                             this.latestRecord = this.records[this.records.length - 1]
                         }
-                        // console.log('latest', this.latestRecord)
-                        // this.totalTime = 0
-                        // if (this.totalTime < 60) {
-                        //     this.totalTime = this.totalTime + '秒'
-                        // } else if (this.totalTime < 60 * 60) {
-                        //     this.totalTime = Math.ceil(this.totalTime / 60) + '分钟'
-                        // } else {
-                        //     this.totalTime = (this.totalTime / 3600).toFixed(1) + '小时'
-                        // }
                     },
                     response => {
                         console.log('cuol')
@@ -91,7 +120,7 @@
                 this.$router.push(`/records/${item.id}`)
             },
             add() {
-                this.$router.push('/record/add')
+                this.$router.push('/object/add')
             },
             sign(item, index) {
                 this.list[index].times++
@@ -113,7 +142,7 @@
                 if (!ret) {
                     return
                 }
-                this.$http.delete(`/records/${item.id}`).then(
+                this.$http.delete(`/eat/logs/${item.id}`).then(
                     response => {
                         let data = response.data
                         console.log(data)
@@ -148,9 +177,9 @@
                         this.loading = false
                     })
             },
-            quickAdd(item) {
-                this.$http.post(`/records`, {
-                    content: item
+            quickAdd() {
+                this.$http.post(`/eat/logs`, {
+                    content: this.keyword
                 }).then(
                     response => {
                         let data = response.data
@@ -174,7 +203,17 @@
             },
             login() {
                 location.href = oss.getOauthUrl()
-            }
+            },
+            search() {
+                if (!this.keyword) {
+                    this.$message({
+                        type: 'danger',
+                        text: '请输入关键词'
+                    })
+                    return
+                }
+                this.$router.push(`/objects?keyword=${encodeURIComponent(this.keyword)}`)
+            },
         },
         filters: {
             time(value) {
@@ -196,7 +235,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, .12);
 }
-.conteiner {
+.container {
     max-width: 400px;
     margin: 0 auto;
 }
@@ -219,10 +258,15 @@
     .item {
         // display: flex;
         // justify-content: space-between;
-        padding: 16px 0;
+        padding: 8px 0;
         border-bottom: 1px solid rgba(0, 0, 0, .12);
     }
-    .title {
+    .link {
+        display: flex;
+        justify-content: space-between;
+        color: inherit;
+    }
+    .name {
         font-size: 16px;
         font-weight: bold;
         cursor: pointer;
@@ -230,6 +274,16 @@
     .times {
         color: #666;
         cursor: pointer;
+    }
+    .note {
+        color: #999;
+    }
+    .number {
+        text-align: right;
+    }
+    .price {
+        color: #f00;
+        text-align: right;
     }
 }
 .float-button {
@@ -250,6 +304,27 @@
         color: #999;
         padding: 80px 0;
         text-align: center;
+    }
+}
+.search-box {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 24px;
+    // border: 1px solid #eee;
+    box-shadow: 0 1px 6px rgba(0,0,0,.117647), 0 1px 4px rgba(0,0,0,.117647);
+    background-color: #fff;
+    &:hover {
+        box-shadow: 0 3px 8px 0 rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .input {
+        flex-grow: 1;
+        display: block;
+        height: 48px;
+        padding: 0 16px;
+        line-height: 48px;
+        border: none;
+        outline: none;
     }
 }
 </style>

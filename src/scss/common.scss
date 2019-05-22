@@ -1,9 +1,7 @@
-.ui-page-body {
-    -webkit-overflow-scrolling : touch;
-}
-input,
-textarea {
-  -webkit-appearance: none;
+.common-container {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 16px 16px 80px 16px;
 }
 
 
@@ -12,4 +10,13 @@ textarea {
   color: #ff4081;
   user-select: none;
   -webkit-user-select: initial;
+}
+
+.pui-section—title {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+.pui-empty {
+    padding: 80px 0;
+    text-align: center;
 }

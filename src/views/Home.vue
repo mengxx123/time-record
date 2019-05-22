@@ -74,7 +74,7 @@
         },
         methods: {
             view(item, index) {
-                this.$router.push(`/records/${item.id}`)
+                this.$router.push(`/records1/${item.id}`)
             },
             add() {
                 this.$router.push('/add')

@@ -1,24 +1,47 @@
-<template>
-    <my-page title="记录详情" :page="page" backable>
-        <div class="common-container">
-            <ui-article>
-                <h2>{{ record.content }}</h2>
-                <p>备注：{{ record.note || '无' }}</p>
-                <p>记录值：{{ record.value || 0 }}</p>
-                <p>积分：{{ record.score || 0 }}</p>
-                <p>开始时间：{{ record.startTime }}</p>
-                <p v-if="record.duration">持续时间：{{ record.duration }} 秒</p>
-                <p v-if="record.duration">结束时间：{{ record.endTime }}</p>
 
-                <h2>统计</h2>
-                <p>今天：{{ stat.today }}</p>
-            </ui-article>
-        </div>
+<template>
+    <my-page title="修改记录" backable>
+        <ui-text-field class="input" v-model="record.content" label="内容" />
+        <br>
+        <ui-text-field class="input" v-model="record.note" label="备注" />
+        <br>
+        <ui-text-field class="input" v-model.number="record.value" label="记录值" />
+        <br>
+        <ui-text-field class="input" v-model.number="record.score" label="积分" />
+        <br>
+        <ui-text-field class="input" v-model="record.startTime" label="开始时间" />
+        <br>
+        <ui-text-field class="input" v-model="record.duration" label="持续时间（秒）" disabled />
+        <br>
+        <ui-text-field class="input" v-model="record.endTime" label="结束时间" disabled />
+        <br>
+        <ui-raised-button primary label="保存" @click="finish" />
+
+        <hr>
+        <ui-raised-button primary label="设置结束时间为当前时间" @click="endNow" />
+
+        <hr>
+        <ui-raised-button primary label="设置开始时间为上一个记录的结束时间" @click="prev" />
+
+        <hr>
+        <ui-raised-button primary label="设置结束时间为下一个记录的开始时间" @click="next" />
+
+        <hr>
+        <ui-raised-button primary label="查看同事件统计" @click="stat" />
+
+        <hr>
+        <ui-text-field class="input" v-model.number="minute" label="持续时间（分钟）" />
+        <br>
+        <ui-raised-button primary label="快速设置" @click="quickSetting" />
+
+        <hr>
+        <ui-text-field class="input" v-model="endTime" label="结束时间" />
+        <br>
+        <ui-raised-button primary label="快速设置" @click="quickSetting2" />
     </my-page>
 </template>
 
 <script>
-    /* eslint-disable */
     const moment = window.moment
 
     export default {
@@ -28,37 +51,15 @@
                     content: '',
                     note: '',
                 },
-                stat: {
-                    today: 0
-                },
                 minute: null,
                 endTime: '',
                 page: {
                     menu: [
                         {
                             type: 'icon',
-                            icon: 'edit',
-                            click: this.edit,
-                            title: '编辑'
-                        },
-                        {
-                            type: 'icon',
-                            icon: 'delete',
-                            click: this.remove,
-                            title: '删除'
-                        },
-                        {
-                            type: 'icon',
-                            icon: 'first_page',
-                            click: this.prev,
-                            title: '上一个记录'
-                        },
-                                                {
-                            type: 'icon',
-                            icon: 'last_page',
-                            click: this.next,
-                            title: '下一个记录'
-                        },
+                            icon: 'help',
+                            to: '/help'
+                        }
                     ]
                 }
             }
@@ -75,47 +76,17 @@
                     this.endTime = this.record.endTime
 
                     // this.$router.go(-1)
-                    this.$http.get(`/users/1/records?page_size=9999&date=&content=${this.record.content}`).then(
-                        response => {
-                            let data = response.data
-                            console.log(data)
-                            this.stat.today = data.length
-                            // this.records = data
-                            // if (this.records.length) {
-                            //     this.latestRecord = this.records[this.records.length - 1]
-                            // }
-                        },
-                        response => {
-                            console.log(response)
-                            this.loading = false
-                        })
                 },
                 response => {
                     console.log(response)
                     this.loading = false
                 })
             document.addEventListener('keydown', this._onKeyDown = e => {
-                console.log(e.keyCode)
-                if (e.keyCode === 69) {
-                    this.edit()
+                console.log(e, e.keyCode)
+                if (e.ctrlKey && e.keyCode === 83) {
+                    this.finish()
+                    return false
                 }
-                switch (e.keyCode) {
-                    case 69: // e
-                        this.edit()
-                        return
-                    case 8:
-                        this.remove()
-                        return
-                    case 37:
-                        this.prev()
-                        return
-                    case 39:
-                        this.next()
-                        return
-                }
-                // if (e.keyCode === 69) {
-                //     this.edit()
-                // }
             })
         },
         destroyed() {
@@ -123,9 +94,6 @@
             document.removeEventListener('keydown', this._onKeyDown)
         },
         methods: {
-            edit() {
-                this.$router.push(`/records/${this.$route.params.id}/edit`)
-            },
             finish() {
                 if (!this.record.content) {
                     this.$message({
@@ -153,7 +121,7 @@
                 this.record.duration = (moment(this.record.endTime).toDate().getTime() - moment(this.record.startTime).toDate().getTime()) / 1000
             },
             quickSetting() {
-                if (!this.minute) {
+                if (!this.minute && this.minute !== 0) {
                     this.$message({
                         type: 'danger',
                         text: '请输入分钟'
@@ -175,21 +143,6 @@
                 this.record.duration = (moment(this.record.endTime).toDate().getTime() - moment(this.record.startTime).toDate().getTime()) / 1000
                 // this.record.endTime = moment(this.record.startTime).add(this.record.duration, 's').format('YYYY-MM-DD HH:mm:ss')
             },
-            remove() {
-                let ret = window.confirm(`确认删除 ${this.record.content}？`)
-                if (!ret) {
-                    return
-                }
-                this.$http.delete(`/records/${this.record.id}`).then(
-                    response => {
-                        // let data = response.data
-                        this.$router.go(-1)
-                    },
-                    response => {
-                        console.log(response)
-                        this.loading = false
-                    })
-            },
             stat() {
                 this.$router.push(`/record/stat?content=${this.record.content}`)
             },
@@ -199,16 +152,18 @@
                         let data = response.data
                         console.log('上一个', data)
                         if (!data) {
-                            this.$message({
-                                type: 'danger',
-                                text: '没有上一个记录'
-                            })
+                            if (!this.endTime) {
+                                this.$message({
+                                    type: 'danger',
+                                    text: '没有上一个记录'
+                                })
+                                return
+                            }
                             return
                         }
-                        // // this.$router.go(-1)
-                        // this.record.startTime = moment(data.endTime).format('YYYY-MM-DD HH:mm:ss')
-                        // this.record.duration = (moment(this.record.endTime).toDate().getTime() - moment(this.record.startTime).toDate().getTime()) / 1000
-                        this.$router.replace(`/records/${data.id}`)
+                        // this.$router.go(-1)
+                        this.record.startTime = moment(data.endTime).format('YYYY-MM-DD HH:mm:ss')
+                        this.record.duration = (moment(this.record.endTime).toDate().getTime() - moment(this.record.startTime).toDate().getTime()) / 1000
                     },
                     response => {
                         console.log(response)
@@ -219,15 +174,20 @@
                 this.$http.get(`/records/${this.record.id}/next`).then(
                     response => {
                         let data = response.data
-                        console.log('下一个', data)
+                        console.log('上一个', data)
                         if (!data) {
-                            this.$message({
-                                type: 'danger',
-                                text: '没有下一个记录'
-                            })
+                            if (!this.endTime) {
+                                this.$message({
+                                    type: 'danger',
+                                    text: '没有下一个记录'
+                                })
+                                return
+                            }
                             return
                         }
-                        this.$router.replace(`/records/${data.id}`)
+                        // this.$router.go(-1)
+                        this.record.endTime = moment(data.startTime).format('YYYY-MM-DD HH:mm:ss')
+                        this.record.duration = (moment(this.record.endTime).toDate().getTime() - moment(this.record.startTime).toDate().getTime()) / 1000
                     },
                     response => {
                         console.log(response)

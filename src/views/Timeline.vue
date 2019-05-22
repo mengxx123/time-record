@@ -1,6 +1,6 @@
 <template>
     <my-page title="时间轴" :page="page" backable>
-        <div class="conteiner">
+        <div class="common-container">
             <h2></h2>
             <div class="percent" v-if="statVisible">
                 {{ isToday ? '今天' : date }}已经过了 {{ totalTime }} 个小时，记录了 {{ recordTime }} 个小时，占比 {{ percent }}%
@@ -20,7 +20,7 @@
                     <li class="item" v-for="item, index in records" :key="index" :style="{top: item.top + 'px', height: item.height + 'px'}">
                         <div class="bg" :title="item.title"></div>
                         <div class="content" :title="item.title">
-                            <router-link :to="`/records2/${item.id}`">
+                            <router-link :to="`/records/${item.id}`">
                                 {{ item.content }}
                             </router-link>
                         </div>
